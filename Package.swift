@@ -6,6 +6,7 @@ let modules: [(name: String, dependencies: [Target.Dependency])] = [
   ("Rules", ["Contracts", "Geometry"]),
   ("Persistence", ["Contracts"]),
   ("Selection", ["Contracts"]),
+  ("Displays", ["Contracts"]),
 ]
 
 let package = Package(
