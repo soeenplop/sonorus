@@ -4,7 +4,7 @@ import PackageDescription
 // Standalone M0 rendering spike. Deliberately not part of
 // the root Sonorus package; nothing here is production code.
 let tools = [
-  "WindowDump", "FocusProbe", "VariantA", "VariantB", "VariantC", "BlurBench",
+  "WindowDump", "FocusProbe", "VariantA", "VariantB", "VariantC", "VariantD", "BlurBench",
   "TestWindows",
 ]
 
