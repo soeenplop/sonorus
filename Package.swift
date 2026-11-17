@@ -2,7 +2,8 @@
 import PackageDescription
 
 let modules: [(name: String, dependencies: [Target.Dependency])] = [
-  ("Geometry", ["Contracts"])
+  ("Geometry", ["Contracts"]),
+  ("Rules", ["Contracts", "Geometry"]),
 ]
 
 let package = Package(
