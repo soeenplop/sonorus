@@ -1,7 +1,9 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-let modules: [(name: String, dependencies: [Target.Dependency])] = []
+let modules: [(name: String, dependencies: [Target.Dependency])] = [
+  ("Geometry", ["Contracts"])
+]
 
 let package = Package(
   name: "Sonorus",
