@@ -42,3 +42,41 @@ final class ConfigurationTests: XCTestCase {
     XCTAssertFalse(ScreenRect(x: .nan, y: 0, width: 100, height: 100).isUsable)
   }
 }
+
+final class TolerantDecodingTests: XCTestCase {
+  func testMissingFieldsFallBackToDefaults() throws {
+    let configuration = try JSONDecoder().decode(
+      FocusConfiguration.self, from: Data(#"{"isEnabled":true,"effects":{"blur":0.9}}"#.utf8))
+    XCTAssertTrue(configuration.isEnabled)
+    XCTAssertEqual(configuration.scope, .allDisplays)
+    XCTAssertEqual(configuration.regions, [])
+    XCTAssertEqual(configuration.effects, EffectSettings(blur: 0.9))
+  }
+
+  func testUnreadableRegionIsDroppedAlone() throws {
+    let json = #"""
+      {"scope":{"regions":{}},"regions":[
+        {"id":"00000000-0000-0000-0000-000000000001","displayID":"d",
+         "rect":{"x":0.1,"y":0.1,"width":0.5,"height":0.5}},
+        {"id":"broken"},
+        {"id":"00000000-0000-0000-0000-000000000002","displayID":"d",
+         "rect":{"x":0.2,"y":0.2,"width":0.5,"height":0.5},"isEnabled":false}
+      ]}
+      """#
+    let configuration = try JSONDecoder().decode(FocusConfiguration.self, from: Data(json.utf8))
+    XCTAssertEqual(configuration.scope, .regions)
+    XCTAssertEqual(configuration.regions.map(\.isEnabled), [true, false])
+  }
+
+  func testUnknownScopeFallsBackWithoutLosingRegions() throws {
+    let json = #"""
+      {"scope":{"future":{}},"regions":[
+        {"id":"00000000-0000-0000-0000-000000000001","displayID":"d",
+         "rect":{"x":0.1,"y":0.1,"width":0.5,"height":0.5}}
+      ]}
+      """#
+    let configuration = try JSONDecoder().decode(FocusConfiguration.self, from: Data(json.utf8))
+    XCTAssertEqual(configuration.scope, .allDisplays)
+    XCTAssertEqual(configuration.regions.count, 1)
+  }
+}

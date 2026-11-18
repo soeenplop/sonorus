@@ -20,6 +20,16 @@ public struct FocusRegion: Codable, Equatable, Identifiable, Sendable {
     self.rect = rect
     self.isEnabled = isEnabled
   }
+
+  /// A missing `isEnabled` means enabled; identity and geometry are required.
+  public init(from decoder: any Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    self.init(
+      id: try values.decode(UUID.self, forKey: .id),
+      displayID: try values.decode(DisplayID.self, forKey: .displayID),
+      rect: try values.decode(NormalizedRect.self, forKey: .rect),
+      isEnabled: try values.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true)
+  }
 }
 
 /// Immutable validated effect parameters; persisted input uses the same bounds
@@ -37,12 +47,17 @@ public struct EffectSettings: Codable, Equatable, Sendable {
     self.transitionDuration = Self.bounded(transitionDuration, maximum: 1.5, fallback: 0.75)
   }
 
+  /// Missing or unreadable values fall back to their defaults.
   public init(from decoder: any Decoder) throws {
     let values = try decoder.container(keyedBy: CodingKeys.self)
+    let defaults = EffectSettings()
+    func value(_ key: CodingKeys, _ fallback: Double) -> Double {
+      ((try? values.decodeIfPresent(Double.self, forKey: key)) ?? nil) ?? fallback
+    }
     self.init(
-      blur: try values.decode(Double.self, forKey: .blur),
-      backgroundBrightness: try values.decode(Double.self, forKey: .backgroundBrightness),
-      transitionDuration: try values.decode(Double.self, forKey: .transitionDuration))
+      blur: value(.blur, defaults.blur),
+      backgroundBrightness: value(.backgroundBrightness, defaults.backgroundBrightness),
+      transitionDuration: value(.transitionDuration, defaults.transitionDuration))
   }
 
   private static func bounded(_ value: Double, maximum: Double, fallback: Double) -> Double {
@@ -65,6 +80,30 @@ public struct FocusConfiguration: Codable, Equatable, Sendable {
     self.scope = scope
     self.regions = regions
     self.effects = effects
+  }
+
+  /// Reads as much as possible: a missing or unreadable field falls back to
+  /// its default, and an unreadable region is dropped on its own.
+  public init(from decoder: any Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    let defaults = FocusConfiguration()
+    func field<T: Decodable>(_ type: T.Type, _ key: CodingKeys) -> T? {
+      (try? values.decodeIfPresent(type, forKey: key)) ?? nil
+    }
+    self.init(
+      isEnabled: field(Bool.self, .isEnabled) ?? defaults.isEnabled,
+      scope: field(EffectScope.self, .scope) ?? defaults.scope,
+      regions: field([Lossy<FocusRegion>].self, .regions)?.compactMap(\.value) ?? [],
+      effects: field(EffectSettings.self, .effects) ?? defaults.effects)
+  }
+}
+
+/// Decodes an element or nothing, so one bad entry does not fail a list.
+private struct Lossy<Value: Decodable>: Decodable {
+  let value: Value?
+
+  init(from decoder: any Decoder) throws {
+    value = try? Value(from: decoder)
   }
 }
 

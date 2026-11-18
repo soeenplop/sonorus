@@ -117,8 +117,20 @@ final class FileConfigurationStoreTests: XCTestCase {
   }
 
   func testWrongShapeFallsBackToDefaultsAndKeepsBackup() async throws {
-    let wrongShape = Data(#"{"schemaVersion":1,"configuration":{"isEnabled":"yes"}}"#.utf8)
+    let wrongShape = Data(#"{"schemaVersion":1,"configuration":[true]}"#.utf8)
     try await assertRecovery(from: wrongShape, reason: "corrupt")
+  }
+
+  func testUnreadableFieldKeepsTheRestWithoutBackup() async throws {
+    let json = #"{"schemaVersion":1,"configuration":{"isEnabled":"yes","scope":{"regions":{}}}}"#
+    let store = makeStore()
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    try Data(json.utf8).write(to: store.fileURL)
+    let loaded = try await store.load()
+    XCTAssertFalse(loaded.isEnabled)
+    XCTAssertEqual(loaded.scope, .regions)
+    let backup = await store.lastRecoveredBackup
+    XCTAssertNil(backup)
   }
 
   func testMissingSchemaVersionIsTreatedAsCorrupt() async throws {
