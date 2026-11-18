@@ -74,6 +74,10 @@ public enum FocusConfidence: Equatable, Sendable {
 /// Immutable, internally consistent view of the desktop. Windows are ordered
 /// front to back, include occluding system surfaces where available, and exclude
 /// Sonorus overlays. Revision does NOT synchronize this with capture frames.
+///
+/// `associatedWindows` belong to the focused window (popups, suggestion lists,
+/// sheets) and stay sharp with it. While `isSystemOverlayActive` (window
+/// switcher, Mission Control) every effect pauses.
 public struct DesktopSnapshot: Equatable, Sendable {
   public let revision: UInt64
   public let displays: [DisplaySnapshot]
@@ -81,11 +85,12 @@ public struct DesktopSnapshot: Equatable, Sendable {
   public let focusedWindow: WindowReference?
   public let focusConfidence: FocusConfidence
   public let associatedWindows: Set<WindowReference>
+  public let isSystemOverlayActive: Bool
 
   public init(
     revision: UInt64, displays: [DisplaySnapshot], windows: [WindowSnapshot],
     focusedWindow: WindowReference?, focusConfidence: FocusConfidence,
-    associatedWindows: Set<WindowReference> = []
+    associatedWindows: Set<WindowReference> = [], isSystemOverlayActive: Bool = false
   ) {
     self.revision = revision
     self.displays = displays
@@ -93,5 +98,6 @@ public struct DesktopSnapshot: Equatable, Sendable {
     self.focusedWindow = focusedWindow
     self.focusConfidence = focusConfidence
     self.associatedWindows = associatedWindows
+    self.isSystemOverlayActive = isSystemOverlayActive
   }
 }

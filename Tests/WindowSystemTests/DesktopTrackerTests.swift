@@ -177,6 +177,17 @@ final class DesktopTrackerTests: XCTestCase {
     XCTAssertFalse(tracker.knownWindows.contains { $0.windowID == 20 })
   }
 
+  func testSnapshotCarriesPopupsAndSystemOverlay() async throws {
+    windows.onScreen.insert(cgEntry(11, pid: 10, frame: rect(150, 150, 200, 100)), at: 2)
+    windows.onScreen.insert(cgEntry(60, pid: 60, layer: 19, frame: rect(0, 0, 1440, 900)), at: 0)
+    windows.bundles[60] = "com.apple.WindowManager"
+    try await tracker.start()
+    let snapshot = try XCTUnwrap(tracker.currentSnapshot)
+    XCTAssertEqual(snapshot.focusedWindow?.windowID, 10)
+    XCTAssertEqual(snapshot.associatedWindows.map(\.windowID), [11])
+    XCTAssertTrue(snapshot.isSystemOverlayActive)
+  }
+
   func testFreezeKeepsTargetWhileOwnUIIsActive() async throws {
     try await tracker.start()
     let editor = reference(10)

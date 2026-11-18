@@ -60,6 +60,15 @@ final class EffectResolverTests: XCTestCase {
     XCTAssertEqual(totalArea(scene), 0)
   }
 
+  func testSystemOverlayPausesTheEffect() {
+    let base = DesktopFixtures.overlappingWindows()
+    let switcher = DesktopSnapshot(
+      revision: 1, displays: base.displays, windows: base.windows,
+      focusedWindow: base.focusedWindow, focusConfidence: .uncertain,
+      isSystemOverlayActive: true)
+    XCTAssertEqual(totalArea(resolver.resolve(desktop: switcher, session: session())), 0)
+  }
+
   func testMissingOrUnknownFocusedWindowProducesEmptyMasks() {
     let base = DesktopFixtures.overlappingWindows()
     let stale = WindowReference(windowID: 101, ownerPID: 1001, generation: 2)

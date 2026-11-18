@@ -188,6 +188,32 @@ final class WindowCatalogTests: XCTestCase {
     XCTAssertNil(catalog.references[1], "closed while hidden, dropped at the next check")
   }
 
+  func testWindowSwitcherAndMissionControlAreSystemOverlays() {
+    var catalog = WindowCatalog(ownPID: ownPID)
+    let app = cgEntry(1, pid: 10, frame: rect(100, 100, 600, 400))
+    let bundles: [Int32: String] = [
+      20: "com.apple.WindowManager", 21: "com.apple.dock", 22: "com.apple.notificationcenterui",
+    ]
+    _ = update(&catalog, [app], bundles: bundles)
+    XCTAssertFalse(catalog.isSystemOverlayActive)
+
+    let strip = cgEntry(2, pid: 20, layer: 14, frame: rect(0, 0, 1440, 128))
+    _ = update(&catalog, [strip, app], bundles: bundles)
+    XCTAssertFalse(catalog.isSystemOverlayActive, "a partial strip is no overlay")
+
+    let switcher = cgEntry(3, pid: 20, layer: 19, frame: rect(0, 0, 1440, 900))
+    _ = update(&catalog, [switcher, strip, app], bundles: bundles)
+    XCTAssertTrue(catalog.isSystemOverlayActive)
+
+    let missionControl = cgEntry(4, pid: 21, layer: 20, frame: rect(0, 0, 1440, 900))
+    _ = update(&catalog, [missionControl, app], bundles: bundles)
+    XCTAssertTrue(catalog.isSystemOverlayActive)
+
+    let notifications = cgEntry(5, pid: 22, layer: 21, frame: rect(0, 0, 1440, 900))
+    _ = update(&catalog, [notifications, app], bundles: bundles)
+    XCTAssertFalse(catalog.isSystemOverlayActive)
+  }
+
   func testReusedIDWithAnotherOwnerGetsNewGeneration() {
     var catalog = WindowCatalog(ownPID: ownPID)
     let old = update(&catalog, [cgEntry(1, pid: 10, frame: rect(0, 0, 100, 100))])[0].reference

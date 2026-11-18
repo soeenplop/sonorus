@@ -33,6 +33,49 @@ final class FocusTrackerTests: XCTestCase {
       tracker.resolve(frontmostPID: 30, windows: windows), .unavailable)
   }
 
+  func testSmallPopupInFrontStaysSharpWithTheRealWindow() {
+    var tracker = FocusTracker(ownPID: ownPID)
+    let windows = [
+      window(1, pid: 10, frame: rect(200, 100, 600, 300)),  // suggestion list
+      window(2, pid: 10, frame: rect(0, 0, 1200, 800)),
+      window(3, pid: 20, frame: rect(0, 0, 1200, 800)),
+    ]
+    let state = tracker.resolve(frontmostPID: 10, windows: windows)
+    XCTAssertEqual(state.window, windows[1].reference)
+    XCTAssertEqual(state.associated, [windows[0].reference])
+  }
+
+  func testSmallWindowBesideALargerOneIsTheTarget() {
+    var tracker = FocusTracker(ownPID: ownPID)
+    let windows = [
+      window(1, pid: 10, frame: rect(1300, 0, 300, 300)),
+      window(2, pid: 10, frame: rect(0, 0, 1200, 800)),
+    ]
+    let state = tracker.resolve(frontmostPID: 10, windows: windows)
+    XCTAssertEqual(state.window, windows[0].reference)
+    XCTAssertTrue(state.associated.isEmpty)
+  }
+
+  func testSimilarSizedWindowInFrontIsTheTarget() {
+    var tracker = FocusTracker(ownPID: ownPID)
+    let windows = [
+      window(1, pid: 10, frame: rect(100, 100, 900, 700)),
+      window(2, pid: 10, frame: rect(0, 0, 1200, 800)),
+    ]
+    XCTAssertEqual(tracker.resolve(frontmostPID: 10, windows: windows).window, windows[0].reference)
+  }
+
+  func testFreezeKeepsOnlyAssociatedWindowsThatStillExist() {
+    var tracker = FocusTracker(ownPID: ownPID)
+    let popup = window(1, pid: 10, frame: rect(200, 100, 300, 300))
+    let main = window(2, pid: 10, frame: rect(0, 0, 1200, 800))
+    _ = tracker.resolve(frontmostPID: 10, windows: [popup, main])
+    tracker.freeze()
+    XCTAssertEqual(
+      tracker.resolve(frontmostPID: ownPID, windows: [popup, main]).associated, [popup.reference])
+    XCTAssertEqual(tracker.resolve(frontmostPID: ownPID, windows: [main]).associated, [])
+  }
+
   func testOwnApplicationNeverBecomesTarget() {
     var tracker = FocusTracker(ownPID: ownPID)
     let windows = [

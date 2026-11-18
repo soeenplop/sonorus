@@ -32,9 +32,15 @@ struct WindowCatalog {
   ]
   /// The menu bar is owned by the window server process, which has no bundle.
   static let systemOwnerNames: Set<String> = ["Window Server"]
+  /// Owners of full-display system overlays during which effects pause: the
+  /// window switcher (layer 19) and Mission Control (layer 20).
+  static let overlayBundleIDs: Set<String> = ["com.apple.dock", "com.apple.WindowManager"]
+  static let overlayMinimumLayer = 18
 
   let ownPID: Int32
   private(set) var references: [UInt32: WindowReference] = [:]
+  /// Set by `update` when a system overlay covers a display.
+  private(set) var isSystemOverlayActive = false
   private var onScreenIDs: Set<UInt32> = []
   private var nextGeneration: UInt64 = 1
 
@@ -54,6 +60,11 @@ struct WindowCatalog {
   ) -> [CatalogWindow] {
     let foreign = records.filter { $0.ownerPID != ownPID && $0.isOnScreen }
     trackLifetimes(foreign, existing: existing, checkHidden: checkHidden)
+    isSystemOverlayActive = foreign.contains { record in
+      record.layer >= Self.overlayMinimumLayer
+        && bundleID(record.ownerPID).map(Self.overlayBundleIDs.contains) == true
+        && displays.contains { record.frame.contains($0) }
+    }
     return foreign.compactMap { record in
       guard let reference = references[record.windowID],
         record.alpha.isFinite, record.alpha >= Self.minimumAlpha

@@ -176,18 +176,24 @@ public final class DesktopTracker: DesktopProviding {
       separateSpaces: separateSpaces(), checkHidden: checkHidden)
     let state = focus.resolve(frontmostPID: focusSource.frontmostApplicationPID(), windows: windows)
     publish(
-      displays: displayList, windows: windows.map(\.snapshot), focus: state)
+      displays: displayList, windows: windows.map(\.snapshot), focus: state,
+      isSystemOverlayActive: catalog.isSystemOverlayActive)
   }
 
-  private func publish(displays: [DisplaySnapshot], windows: [WindowSnapshot], focus: FocusState) {
+  private func publish(
+    displays: [DisplaySnapshot], windows: [WindowSnapshot], focus: FocusState,
+    isSystemOverlayActive: Bool
+  ) {
     let previous = currentSnapshot?.revision ?? 0
     let candidate = DesktopSnapshot(
       revision: previous, displays: displays, windows: windows, focusedWindow: focus.window,
-      focusConfidence: focus.confidence)
+      focusConfidence: focus.confidence, associatedWindows: focus.associated,
+      isSystemOverlayActive: isSystemOverlayActive)
     guard candidate != currentSnapshot else { return }
     let snapshot = DesktopSnapshot(
       revision: previous + 1, displays: displays, windows: windows, focusedWindow: focus.window,
-      focusConfidence: focus.confidence)
+      focusConfidence: focus.confidence, associatedWindows: focus.associated,
+      isSystemOverlayActive: isSystemOverlayActive)
     currentSnapshot = snapshot
     for continuation in continuations.values { continuation.yield(snapshot) }
   }

@@ -63,7 +63,8 @@ public struct EffectResolver: EffectResolving {
   }
 
   static func isActive(desktop: DesktopSnapshot, configuration: FocusConfiguration) -> Bool {
-    guard configuration.isEnabled, desktop.focusConfidence != .unavailable,
+    guard configuration.isEnabled, !desktop.isSystemOverlayActive,
+      desktop.focusConfidence != .unavailable,
       let focused = desktop.focusedWindow
     else { return false }
     return desktop.windows.contains { $0.reference == focused && $0.isOnScreen }
