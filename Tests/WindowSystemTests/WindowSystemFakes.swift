@@ -35,10 +35,12 @@ final class FakeWindowSource: WindowListSource {
   var hidden: [[String: Any]] = []
   var bundles: [Int32: String] = [:]
   private(set) var bundleLookups = 0
+  private(set) var describeCalls = 0
 
   func onScreenWindows() -> [[String: Any]] { onScreen }
 
   func describeWindows(_ ids: [UInt32]) -> [[String: Any]] {
+    describeCalls += 1
     let wanted = Set(ids)
     return (onScreen + hidden).filter {
       wanted.contains(($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value ?? 0)

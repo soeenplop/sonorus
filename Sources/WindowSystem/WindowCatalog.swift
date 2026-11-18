@@ -16,6 +16,10 @@ struct CatalogWindow: Equatable, Sendable {
 /// while the window server still knows their ID and owner. Once an ID is gone,
 /// or reappears with another owner, it receives a fresh generation from a
 /// monotonic counter, so stale exceptions never match a reused window ID.
+///
+/// Re-describing windows is costly, so only windows that just left the
+/// on-screen list are checked on every update; windows that were already
+/// hidden are only checked when the caller asks for it.
 struct WindowCatalog {
   static let minimumAlpha = 0.05
 
@@ -31,6 +35,7 @@ struct WindowCatalog {
 
   let ownPID: Int32
   private(set) var references: [UInt32: WindowReference] = [:]
+  private var onScreenIDs: Set<UInt32> = []
   private var nextGeneration: UInt64 = 1
 
   init(ownPID: Int32) {
@@ -41,12 +46,14 @@ struct WindowCatalog {
   ///   - records: on-screen window list, front to back.
   ///   - existing: re-describes window IDs that left the on-screen list; only
   ///     windows that still exist are returned.
+  ///   - checkHidden: also re-describes windows that were already hidden.
   mutating func update(
     records: [WindowRecord], existing: ([UInt32]) -> [WindowRecord],
-    bundleID: (Int32) -> String?, displays: [ScreenRect], separateSpaces: Bool
+    bundleID: (Int32) -> String?, displays: [ScreenRect], separateSpaces: Bool,
+    checkHidden: Bool = true
   ) -> [CatalogWindow] {
     let foreign = records.filter { $0.ownerPID != ownPID && $0.isOnScreen }
-    trackLifetimes(foreign, existing: existing)
+    trackLifetimes(foreign, existing: existing, checkHidden: checkHidden)
     return foreign.compactMap { record in
       guard let reference = references[record.windowID],
         record.alpha.isFinite, record.alpha >= Self.minimumAlpha
@@ -71,7 +78,7 @@ struct WindowCatalog {
   }
 
   private mutating func trackLifetimes(
-    _ records: [WindowRecord], existing: ([UInt32]) -> [WindowRecord]
+    _ records: [WindowRecord], existing: ([UInt32]) -> [WindowRecord], checkHidden: Bool
   ) {
     var next: [UInt32: WindowReference] = [:]
     for record in records where next[record.windowID] == nil {
@@ -83,7 +90,12 @@ struct WindowCatalog {
         nextGeneration += 1
       }
     }
-    let vanished = references.keys.filter { next[$0] == nil }.sorted()
+    var vanished = references.keys.filter { next[$0] == nil }.sorted()
+    if !checkHidden {
+      // Already hidden last time: keep the reference until the next check.
+      for id in vanished where !onScreenIDs.contains(id) { next[id] = references[id] }
+      vanished.removeAll { !onScreenIDs.contains($0) }
+    }
     if !vanished.isEmpty {
       for record in existing(vanished) {
         if let known = references[record.windowID], known.ownerPID == record.ownerPID,
@@ -94,6 +106,7 @@ struct WindowCatalog {
       }
     }
     references = next
+    onScreenIDs = Set(records.map(\.windowID))
   }
 
   static func isSystemUI(_ record: WindowRecord, bundleID: String?) -> Bool {

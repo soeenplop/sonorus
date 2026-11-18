@@ -44,6 +44,7 @@ final class AppModel: FocusControlling {
     if let loaded = try? await store?.load() { session.configuration = loaded }
     displays.start()
     pushState()
+    updateActivity()
     do {
       try await desktop.start()
     } catch {
@@ -142,8 +143,14 @@ final class AppModel: FocusControlling {
   private func update(_ change: (inout FocusConfiguration) -> Void) {
     change(&session.configuration)
     save()
+    updateActivity()
     pushState()
     scheduleRender()
+  }
+
+  /// The window list only needs close tracking while something is shown.
+  private func updateActivity() {
+    desktop.isIdle = !session.configuration.isEnabled && !isSelecting
   }
 
   private func save() {
@@ -162,10 +169,16 @@ final class AppModel: FocusControlling {
   }
 
   func startSelection(_ mode: SelectionMode) {
-    guard !isSelecting, let snapshot else { return }
+    guard !isSelecting else { return }
+    isSelecting = true
+    updateActivity()  // refreshes the snapshot when the tracker was idle
+    guard let snapshot = desktop.currentSnapshot else {
+      isSelecting = false
+      updateActivity()
+      return
+    }
     // The popover would otherwise stay above the selection overlay.
     NSApp.keyWindow?.orderOut(nil)
-    isSelecting = true
     desktop.beginFocusFreeze()
     scheduleRender()
     let displaysInScope: Set<DisplayID>
@@ -187,6 +200,7 @@ final class AppModel: FocusControlling {
         if session.configuration != before { save() }
       }
       isSelecting = false
+      updateActivity()
       await desktop.endFocusFreeze()
       pushState()
       scheduleRender()

@@ -125,6 +125,58 @@ final class DesktopTrackerTests: XCTestCase {
     XCTAssertEqual(timers.active(burst).count, 0)
   }
 
+  func testIdlePollsSlowlyWithoutBursts() async throws {
+    try await tracker.start()
+    tracker.isIdle = true
+    XCTAssertEqual(timers.active(poll).count, 0)
+    XCTAssertEqual(timers.active(1).count, 1)
+    events.send(.applicationActivated)
+    XCTAssertEqual(timers.active(burst).count, 0)
+
+    windows.onScreen.removeLast()
+    tracker.isIdle = false
+    XCTAssertEqual(
+      tracker.currentSnapshot?.windows.map(\.reference.windowID), [1, 10],
+      "leaving idle refreshes at once")
+    XCTAssertEqual(timers.active(1).count, 0)
+    XCTAssertEqual(timers.active(poll).count, 1)
+  }
+
+  func testIdleStopsRunningBurst() async throws {
+    try await tracker.start()
+    events.send(.applicationActivated)
+    tracker.isIdle = true
+    XCTAssertEqual(timers.active(burst).count, 0)
+  }
+
+  func testHiddenWindowsAreRecheckedEveryTwoSeconds() async throws {
+    try await tracker.start()
+    let minimized = windows.onScreen.removeLast()
+    windows.hidden = [minimized]
+    timers.fire(poll)
+    let calls = windows.describeCalls
+    XCTAssertNotNil(tracker.catalog.references[20])
+
+    windows.hidden = []  // closed while minimized
+    for _ in 0..<18 { timers.fire(poll) }
+    XCTAssertEqual(windows.describeCalls, calls)
+    XCTAssertNotNil(tracker.catalog.references[20])
+    timers.fire(poll)
+    XCTAssertEqual(windows.describeCalls, calls + 1)
+    XCTAssertNil(tracker.catalog.references[20])
+  }
+
+  func testWorkspaceEventsRecheckHiddenWindows() async throws {
+    try await tracker.start()
+    windows.hidden = [windows.onScreen.removeLast()]
+    timers.fire(poll)
+    let calls = windows.describeCalls
+    windows.hidden = []
+    events.send(.windowsChanged)
+    XCTAssertEqual(windows.describeCalls, calls + 1)
+    XCTAssertNil(tracker.catalog.references[20])
+  }
+
   func testFreezeKeepsTargetWhileOwnUIIsActive() async throws {
     try await tracker.start()
     let editor = reference(10)

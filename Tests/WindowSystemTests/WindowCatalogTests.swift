@@ -147,6 +147,47 @@ final class WindowCatalogTests: XCTestCase {
     XCTAssertGreaterThan(again[1].reference.generation, refB.generation)
   }
 
+  func testAlreadyHiddenWindowsAreOnlyCheckedOnRequest() {
+    var catalog = WindowCatalog(ownPID: ownPID)
+    let a = cgEntry(1, pid: 10, frame: rect(0, 0, 100, 100))
+    var described: [[UInt32]] = []
+    func update(_ onScreen: [[String: Any]], checkHidden: Bool) {
+      _ = catalog.update(
+        records: WindowListParser.parse(onScreen),
+        existing: { ids in
+          described.append(ids)
+          return []
+        },
+        bundleID: { _ in nil }, displays: [rect(0, 0, 1440, 900)], separateSpaces: false,
+        checkHidden: checkHidden)
+    }
+    update([a], checkHidden: false)
+    update([], checkHidden: false)
+    XCTAssertEqual(described, [[1]], "a window that just left the screen is checked at once")
+
+    described = []
+    let b = cgEntry(2, pid: 10, frame: rect(0, 0, 100, 100))
+    update([a, b], checkHidden: false)
+    update([b], checkHidden: false)
+    update([b], checkHidden: false)
+    XCTAssertEqual(described, [[1]])
+    XCTAssertNil(catalog.references[1], "the closed window is dropped")
+  }
+
+  func testHiddenWindowKeepsReferenceUntilChecked() {
+    var catalog = WindowCatalog(ownPID: ownPID)
+    let a = cgEntry(1, pid: 10, frame: rect(0, 0, 100, 100))
+    let hiddenA = cgEntry(1, pid: 10, frame: rect(0, 0, 100, 100), onScreen: false)
+    let ref = update(&catalog, [a])[0].reference
+    _ = update(&catalog, [], hidden: [hiddenA])
+    _ = catalog.update(
+      records: [], existing: { _ in [] }, bundleID: { _ in nil },
+      displays: [rect(0, 0, 1440, 900)], separateSpaces: false, checkHidden: false)
+    XCTAssertEqual(catalog.references[1], ref)
+    _ = update(&catalog, [])
+    XCTAssertNil(catalog.references[1], "closed while hidden, dropped at the next check")
+  }
+
   func testReusedIDWithAnotherOwnerGetsNewGeneration() {
     var catalog = WindowCatalog(ownPID: ownPID)
     let old = update(&catalog, [cgEntry(1, pid: 10, frame: rect(0, 0, 100, 100))])[0].reference

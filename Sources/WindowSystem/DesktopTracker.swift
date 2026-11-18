@@ -10,6 +10,10 @@ import Contracts
 /// window list a few frames after the event. A snapshot (with the next
 /// revision) is only published when its content differs from the previous one.
 ///
+/// While `isIdle` (effect off, no selection) polling slows to
+/// `Timing.idleInterval` and no bursts run. Windows that are already hidden
+/// are re-checked every `Timing.hiddenCheckInterval` and on workspace events.
+///
 /// No permission is needed: focus is the frontmost window of the frontmost
 /// application, guessed from the window order and therefore `.uncertain`.
 @MainActor
@@ -18,18 +22,33 @@ public final class DesktopTracker: DesktopProviding {
     public var pollInterval: TimeInterval
     public var burstInterval: TimeInterval
     public var burstDuration: TimeInterval
+    public var idleInterval: TimeInterval
+    public var hiddenCheckInterval: TimeInterval
 
     public init(
       pollInterval: TimeInterval = 0.1, burstInterval: TimeInterval = 1.0 / 60,
-      burstDuration: TimeInterval = 0.5
+      burstDuration: TimeInterval = 0.5, idleInterval: TimeInterval = 1,
+      hiddenCheckInterval: TimeInterval = 2
     ) {
       self.pollInterval = pollInterval
       self.burstInterval = burstInterval
       self.burstDuration = burstDuration
+      self.idleInterval = idleInterval
+      self.hiddenCheckInterval = hiddenCheckInterval
     }
   }
 
   public private(set) var currentSnapshot: DesktopSnapshot?
+
+  /// Nothing depends on fresh snapshots: poll slowly and skip bursts.
+  /// Leaving idle refreshes immediately.
+  public var isIdle = false {
+    didSet {
+      guard isIdle != oldValue, isRunning else { return }
+      schedulePolling()
+      if isIdle { stopBurst() } else { refresh() }
+    }
+  }
 
   private let displays: any DisplayProviding
   private let windowSource: any WindowListSource
@@ -38,13 +57,14 @@ public final class DesktopTracker: DesktopProviding {
   private let timers: any TimerScheduling
   private let separateSpaces: @MainActor () -> Bool
   private let timing: Timing
-  private var catalog: WindowCatalog
+  private(set) var catalog: WindowCatalog
   private var focus: FocusTracker
   private var bundleIDs: [Int32: String?] = [:]
   private var continuations: [UUID: AsyncStream<DesktopSnapshot>.Continuation] = [:]
   private var pollTimer: (any RepeatingTimer)?
   private var burstTimer: (any RepeatingTimer)?
   private var burstTicksRemaining = 0
+  private var sinceHiddenCheck: TimeInterval = 0
   private(set) var isRunning = false
 
   /// - Parameter displays: usually `Displays.DisplayManager`, started by the caller.
@@ -76,8 +96,23 @@ public final class DesktopTracker: DesktopProviding {
     guard !isRunning else { return }
     isRunning = true
     events.start { [weak self] event in self?.handle(event) }
-    pollTimer = timers.repeating(every: timing.pollInterval) { [weak self] in self?.refresh() }
-    refresh()
+    schedulePolling()
+    refresh(checkHidden: true)
+  }
+
+  private var currentPollInterval: TimeInterval {
+    isIdle ? timing.idleInterval : timing.pollInterval
+  }
+
+  private func schedulePolling() {
+    pollTimer?.cancel()
+    pollTimer = timers.repeating(every: currentPollInterval) { [weak self] in self?.pollTick() }
+  }
+
+  private func pollTick() {
+    sinceHiddenCheck += currentPollInterval
+    let checkHidden = sinceHiddenCheck >= timing.hiddenCheckInterval - 1e-9
+    refresh(checkHidden: checkHidden)
   }
 
   public func stop() {
@@ -115,17 +150,18 @@ public final class DesktopTracker: DesktopProviding {
     focus.unfreeze()
     guard isRunning else { return }
     refresh()
-    startBurst()
+    if !isIdle { startBurst() }
   }
 
   func handle(_ event: DesktopEvent) {
     guard isRunning else { return }
-    refresh()
-    if event.startsBurst { startBurst() }
+    refresh(checkHidden: true)
+    if event.startsBurst, !isIdle { startBurst() }
   }
 
-  func refresh() {
+  func refresh(checkHidden: Bool = false) {
     guard isRunning else { return }
+    if checkHidden { sinceHiddenCheck = 0 }
     let displayList = displays.currentDisplays()
     let records = WindowListParser.parse(windowSource.onScreenWindows())
     pruneBundleIDs(keeping: Set(records.map(\.ownerPID)))
@@ -133,7 +169,7 @@ public final class DesktopTracker: DesktopProviding {
       records: records,
       existing: { [windowSource] in WindowListParser.parse(windowSource.describeWindows($0)) },
       bundleID: bundleID(for:), displays: displayList.map(\.frame),
-      separateSpaces: separateSpaces())
+      separateSpaces: separateSpaces(), checkHidden: checkHidden)
     let state = focus.resolve(frontmostPID: focusSource.frontmostApplicationPID(), windows: windows)
     publish(
       displays: displayList, windows: windows.map(\.snapshot), focus: state)

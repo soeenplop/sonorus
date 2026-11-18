@@ -96,6 +96,8 @@ final class RunLoopTimers: TimerScheduling {
     let timer = Timer(timeInterval: interval, repeats: true) { _ in
       MainActor.assumeIsolated { action() }
     }
+    // Lets the system coalesce wake-ups; a tenth of the interval is not visible.
+    timer.tolerance = interval * 0.1
     RunLoop.main.add(timer, forMode: .common)
     return Handle(timer)
   }
