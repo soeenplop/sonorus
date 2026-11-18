@@ -266,6 +266,17 @@ final class MenuBarViewModelTests: XCTestCase {
 
   // MARK: Exceptions
 
+  func testExceptionsOfOneAppAreNumbered() {
+    let refs = (1...3).map { WindowReference(windowID: $0, ownerPID: 1, generation: 1) }
+    let exceptions = [
+      MenuBarException(reference: refs[0], appName: "Safari"),
+      MenuBarException(reference: refs[1], appName: "Notes"),
+      MenuBarException(reference: refs[2], appName: "Safari"),
+    ]
+    let model = makeModel(state: MenuBarState(exceptions: exceptions)).0
+    XCTAssertEqual(exceptions.map(model.name(of:)), ["Safari (1)", "Notes", "Safari (2)"])
+  }
+
   func testExceptionDisplayNameUsesAppName() {
     let ref = WindowReference(windowID: 1, ownerPID: 1, generation: 1)
     XCTAssertEqual(MenuBarException(reference: ref, appName: "Notes").displayName, "Notes")

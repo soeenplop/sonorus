@@ -166,7 +166,7 @@ public struct MenuBarContent: View {
       } else {
         VStack(alignment: .leading, spacing: 4) {
           ForEach(model.state.exceptions) { exception in
-            ExceptionRow(exception: exception) { model.removeException(exception) }
+            ExceptionRow(name: model.name(of: exception)) { model.removeException(exception) }
           }
         }
       }
@@ -221,7 +221,7 @@ private struct MenuGroup<Content: View>: View {
 
 /// One "keep sharp" window with a remove button.
 private struct ExceptionRow: View {
-  let exception: MenuBarException
+  let name: String
   let remove: () -> Void
 
   var body: some View {
@@ -229,11 +229,11 @@ private struct ExceptionRow: View {
       Image(systemName: "macwindow")
         .foregroundStyle(.secondary)
         .accessibilityHidden(true)
-      Text(exception.displayName)
+      Text(name)
         .lineLimit(1)
         .truncationMode(.middle)
         .font(.callout)
-        .help(exception.displayName)
+        .help(name)
       Spacer(minLength: 4)
       Button(action: remove) {
         Image(systemName: "xmark.circle.fill")
@@ -243,7 +243,7 @@ private struct ExceptionRow: View {
       }
       .buttonStyle(.borderless)
       .help("Remove Exception")
-      .accessibilityLabel("Remove exception: \(exception.displayName)")
+      .accessibilityLabel("Remove exception: \(name)")
     }
   }
 }

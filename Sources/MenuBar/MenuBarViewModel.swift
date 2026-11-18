@@ -252,6 +252,15 @@ public final class MenuBarViewModel {
 
   // MARK: Exceptions
 
+  /// The app name, numbered in list order when one app has several windows.
+  public func name(of exception: MenuBarException) -> String {
+    let same = state.exceptions.filter { $0.displayName == exception.displayName }
+    guard same.count > 1, let index = same.firstIndex(of: exception) else {
+      return exception.displayName
+    }
+    return "\(exception.displayName) (\(index + 1))"
+  }
+
   public func removeException(_ exception: MenuBarException) {
     state.exceptions.removeAll { $0.reference == exception.reference }
     controller.removeException(exception.reference)
