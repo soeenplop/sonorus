@@ -197,3 +197,25 @@ final class WindowAndDisplaySelectionTests: XCTestCase {
     XCTAssertTrue(engine.draft.regions.isEmpty)
   }
 }
+
+final class SelectionAccessibilityTests: XCTestCase {
+  typealias S = SelectionScenario
+
+  func testSummaryCountsTheSelectionOfTheCurrentMode() {
+    var engine = S.engine(mode: .windows)
+    XCTAssertEqual(engine.scene.selectionSummary, "No window selected")
+    engine.click(at: S.point(150, 150))
+    XCTAssertEqual(engine.scene.selectionSummary, "1 window selected")
+    engine.click(at: S.point(-100, 100))
+    XCTAssertEqual(engine.scene.selectionSummary, "2 windows selected")
+
+    engine.setMode(.displays)
+    engine.click(at: S.point(700, 400))
+    XCTAssertEqual(engine.scene.selectionSummary, "1 display selected")
+
+    engine.setMode(.regions)
+    XCTAssertEqual(engine.scene.selectionSummary, "No region")
+    S.drag(&engine, from: S.point(100, 100), to: S.point(400, 400))
+    XCTAssertEqual(engine.scene.selectionSummary, "1 region")
+  }
+}

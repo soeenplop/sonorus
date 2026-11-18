@@ -60,6 +60,38 @@ struct SelectionScene: Equatable, Sendable {
 
   static let ambiguousDisplayLabel = "Not uniquely identified – cannot be selected"
 
+  /// What the overlay is for, spoken by VoiceOver.
+  var accessibilityHelp: String {
+    let task =
+      switch mode {
+      case .windows: "Click the windows that should stay sharp."
+      case .displays: "Click the displays the effect applies to."
+      case .regions: "Drag a rectangle to create a region."
+      }
+    return task + " Return applies, Esc cancels, 1, 2 and 3 switch the mode."
+  }
+
+  /// The current selection in words; announced when it changes.
+  var selectionSummary: String {
+    switch mode {
+    case .windows:
+      Self.count(windows.filter(\.isSelected).count, "window", "windows") + " selected"
+    case .displays:
+      Self.count(displays.filter(\.isSelected).count, "display", "displays")
+        + " selected"
+    case .regions:
+      Self.count(regions.count, "region", "regions")
+    }
+  }
+
+  private static func count(_ value: Int, _ singular: String, _ plural: String) -> String {
+    switch value {
+    case 0: "No \(singular)"
+    case 1: "1 \(singular)"
+    default: "\(value) \(plural)"
+    }
+  }
+
   static func sizeLabel(for frame: ScreenRect) -> String {
     "\(Int(frame.width.rounded())) × \(Int(frame.height.rounded()))"
   }

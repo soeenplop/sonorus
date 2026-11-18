@@ -20,6 +20,7 @@ final class SelectionOverlayView: NSView {
     didSet {
       toolbar.update(with: scene)
       needsDisplay = true
+      updateAccessibility(previous: oldValue)
     }
   }
 
@@ -37,6 +38,24 @@ final class SelectionOverlayView: NSView {
     ])
     toolbar.onCommand = { [weak self] in self?.onCommand($0) }
     toolbar.update(with: scene)
+    setAccessibilityElement(true)
+    setAccessibilityRole(.group)
+    updateAccessibility(previous: nil)
+  }
+
+  /// Every display has an overlay; only the key one announces changes.
+  private func updateAccessibility(previous: SelectionScene?) {
+    setAccessibilityLabel("Selection: \(scene.selectionSummary)")
+    setAccessibilityHelp(scene.accessibilityHelp)
+    guard let previous, window?.isKeyWindow == true,
+      previous.mode != scene.mode || previous.selectionSummary != scene.selectionSummary
+    else { return }
+    NSAccessibility.post(
+      element: self, notification: .announcementRequested,
+      userInfo: [
+        .announcement: scene.selectionSummary,
+        .priority: NSAccessibilityPriorityLevel.high.rawValue,
+      ])
   }
 
   @available(*, unavailable)

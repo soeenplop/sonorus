@@ -41,10 +41,14 @@ final class SelectionToolbarView: NSVisualEffectView {
     layer?.borderColor = NSColor(white: 1, alpha: 0.28).cgColor
 
     let symbols = ["macwindow", "display", "rectangle.dashed"]
+    let tips = [
+      "Keep windows sharp (1)", "Select displays (2)", "Edit regions (3)",
+    ]
     for (index, symbol) in symbols.enumerated() {
       modeControl.setImage(
         NSImage(systemSymbolName: symbol, accessibilityDescription: nil), forSegment: index)
       modeControl.setImageScaling(.scaleProportionallyDown, forSegment: index)
+      modeControl.setToolTip(tips[index], forSegment: index)
     }
     modeControl.target = self
     modeControl.action = #selector(modeChanged)
