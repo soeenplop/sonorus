@@ -206,6 +206,18 @@ final class MenuBarViewModelTests: XCTestCase {
     XCTAssertEqual(model.statusText, "On")
   }
 
+  func testStatusTextReportsMissingFocusWindow() {
+    var lost = state(isEnabled: true)
+    lost.hasFocusWindow = false
+    let model = makeModel(state: lost).0
+    XCTAssertEqual(model.statusText, "No focused window detected")
+    XCTAssertFalse(model.isEffective)
+
+    var off = lost
+    off.configuration.isEnabled = false
+    XCTAssertEqual(makeModel(state: off).0.statusText, "Off")
+  }
+
   func testPersistenceNoteExplainsWhyNothingIsSaved() {
     XCTAssertNil(makeModel().0.persistenceNote)
     let unreadable = makeModel(state: MenuBarState(persistenceIssue: .unreadable)).0

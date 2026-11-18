@@ -50,16 +50,20 @@ public struct MenuBarState: Equatable, Sendable {
   /// True when the renderer lacks the adjustable blur and only approximates it.
   public var usesFallbackBlur: Bool
   public var persistenceIssue: PersistenceIssue?
+  /// False when no work window is recognized, so nothing can stay sharp.
+  public var hasFocusWindow: Bool
 
   public init(
     configuration: FocusConfiguration = FocusConfiguration(),
     exceptions: [MenuBarException] = [], displays: [MenuBarDisplay] = [],
-    usesFallbackBlur: Bool = false, persistenceIssue: PersistenceIssue? = nil
+    usesFallbackBlur: Bool = false, persistenceIssue: PersistenceIssue? = nil,
+    hasFocusWindow: Bool = true
   ) {
     self.configuration = configuration
     self.exceptions = exceptions
     self.displays = displays
     self.usesFallbackBlur = usesFallbackBlur
     self.persistenceIssue = persistenceIssue
+    self.hasFocusWindow = hasFocusWindow
   }
 }

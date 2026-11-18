@@ -130,6 +130,10 @@ public final class MenuBarViewModel {
   }
 
   private var missingTargetText: String? {
+    scopeProblem ?? (state.hasFocusWindow ? nil : "No focused window detected")
+  }
+
+  private var scopeProblem: String? {
     let connected = Set(state.displays.map(\.id))
     switch state.configuration.scope {
     case .allDisplays:

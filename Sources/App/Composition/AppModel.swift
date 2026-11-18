@@ -83,7 +83,7 @@ final class AppModel: FocusControlling {
     // Exceptions last until their window closes; minimized or hidden windows keep theirs.
     let before = session.exceptions
     session.exceptions.formIntersection(desktop.knownWindows)
-    if session.exceptions != before { pushState() }
+    if session.exceptions != before || hasFocusWindow != menu.state.hasFocusWindow { pushState() }
     scheduleRender()
   }
 
@@ -150,7 +150,14 @@ final class AppModel: FocusControlling {
           MenuBarException(reference: $0, appName: $1)
         },
         displays: connected.map { MenuBarDisplay(id: $0.id, name: $0.name) },
-        usesFallbackBlur: renderer.isUsingFallbackBlur, persistenceIssue: persistenceIssue))
+        usesFallbackBlur: renderer.isUsingFallbackBlur, persistenceIssue: persistenceIssue,
+        hasFocusWindow: hasFocusWindow))
+  }
+
+  /// Without a recognized work window (or during the window switcher) nothing is blurred.
+  private var hasFocusWindow: Bool {
+    guard let snapshot else { return true }
+    return snapshot.focusedWindow != nil && !snapshot.isSystemOverlayActive
   }
 
   /// Applies a configuration change everywhere and saves it.
