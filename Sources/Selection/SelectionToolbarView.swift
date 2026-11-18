@@ -27,7 +27,7 @@ final class SelectionToolbarView: NSVisualEffectView {
       labels: ["Windows", "Displays", "Regions"], trackingMode: .selectOne, target: nil,
       action: nil)
     deleteButton = FirstMouseButton(title: "Delete", target: nil, action: nil)
-    toggleButton = FirstMouseButton(title: "Pause", target: nil, action: nil)
+    toggleButton = FirstMouseButton(title: "Disable", target: nil, action: nil)
     super.init(frame: frameRect)
     material = .hudWindow
     // Blurs the desktop itself, not the scrim and highlights of the overlay.
@@ -53,7 +53,7 @@ final class SelectionToolbarView: NSVisualEffectView {
     configure(deleteButton, symbol: "trash", action: #selector(deleteTapped))
     configure(toggleButton, symbol: "pause.circle", action: #selector(toggleTapped))
     deleteButton.toolTip = "Delete the selected region (⌫)"
-    toggleButton.toolTip = "Pause or resume the selected region (Space)"
+    toggleButton.toolTip = "Disable or enable the selected region (Space)"
 
     let cancel = FirstMouseButton(title: "Cancel", target: self, action: #selector(cancelTapped))
     cancel.bezelStyle = .rounded
@@ -105,10 +105,11 @@ final class SelectionToolbarView: NSVisualEffectView {
     separator.isHidden = !showsRegionActions
     deleteButton.isEnabled = selected != nil
     toggleButton.isEnabled = selected != nil
-    let paused = selected.map { !$0.isEnabled } ?? false
-    toggleButton.title = paused ? "Enable" : "Pause"
+    let disabled = selected.map { !$0.isEnabled } ?? false
+    toggleButton.title = disabled ? "Enable" : "Disable"
     toggleButton.image = NSImage(
-      systemSymbolName: paused ? "play.circle" : "pause.circle", accessibilityDescription: nil)
+      systemSymbolName: disabled ? "checkmark.circle" : "circle.slash",
+      accessibilityDescription: nil)
   }
 
   @objc private func modeChanged() {

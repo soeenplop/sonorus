@@ -246,10 +246,10 @@ final class SelectionOverlayView: NSView {
       if !mark.isEnabled { path.setLineDash([6, 4], count: 2, phase: 0) }
       path.stroke()
       if mark.isSelected {
-        let suffix = mark.isEnabled ? "" : " · paused"
+        let suffix = mark.isEnabled ? "" : " · disabled"
         drawLabel(mark.sizeLabel + suffix, at: labelOrigin(above: rect))
       } else if !mark.isEnabled {
-        drawLabel("paused", at: NSPoint(x: rect.minX + 6, y: rect.minY + 6))
+        drawLabel("disabled", at: NSPoint(x: rect.minX + 6, y: rect.minY + 6))
       }
     }
     for mark in scene.handles
