@@ -206,6 +206,20 @@ final class MenuBarViewModelTests: XCTestCase {
     XCTAssertEqual(model.statusText, "On")
   }
 
+  func testPersistenceNoteExplainsWhyNothingIsSaved() {
+    XCTAssertNil(makeModel().0.persistenceNote)
+    let unreadable = makeModel(state: MenuBarState(persistenceIssue: .unreadable)).0
+    XCTAssertEqual(
+      unreadable.persistenceNote,
+      "Saved settings could not be read. Changes are not saved."
+    )
+    let newer = makeModel(state: MenuBarState(persistenceIssue: .newerVersion)).0
+    XCTAssertEqual(
+      newer.persistenceNote,
+      "Saved settings come from a newer version. Changes are not saved."
+    )
+  }
+
   func testSwitchingBackToDisplaysRestoresTheLastSelection() {
     let (model, controller, _) = makeModel(state: state(scope: .displays([left, right])))
     model.selectScope(.regions)

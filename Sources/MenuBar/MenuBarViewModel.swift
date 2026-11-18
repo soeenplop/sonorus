@@ -194,6 +194,16 @@ public final class MenuBarViewModel {
 
   public var usesFallbackBlur: Bool { state.usesFallbackBlur }
 
+  public var persistenceNote: String? {
+    switch state.persistenceIssue {
+    case .unreadable:
+      "Saved settings could not be read. Changes are not saved."
+    case .newerVersion:
+      "Saved settings come from a newer version. Changes are not saved."
+    case nil: nil
+    }
+  }
+
   /// Values outside the bounds are clamped by `EffectSettings`.
   public func setBlur(_ value: Double) {
     change(

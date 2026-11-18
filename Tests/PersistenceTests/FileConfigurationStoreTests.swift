@@ -204,6 +204,28 @@ final class FileConfigurationStoreTests: XCTestCase {
     XCTAssertEqual(try Data(contentsOf: store.fileURL), Data("broken".utf8))
   }
 
+  func testFailedLoadBlocksSavingUntilALoadSucceeds() async throws {
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let store = makeStore()
+    try Data("broken".utf8).write(to: store.fileURL)
+    try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: directory.path)
+    _ = try? await store.load()
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path)
+
+    do {
+      try await store.save(sample)
+      XCTFail("expected loadFailed")
+    } catch let error as ConfigurationStoreError {
+      guard case .loadFailed = error else { return XCTFail("\(error)") }
+    }
+    XCTAssertEqual(try Data(contentsOf: store.fileURL), Data("broken".utf8))
+
+    _ = try await store.load()  // backs the file up now
+    try await store.save(sample)
+    let loaded = try await store.load()
+    XCTAssertEqual(loaded, sample)
+  }
+
   func testNonFiniteRegionsAreDroppedBeforeSaving() async throws {
     let store = makeStore()
     var invalid = sample

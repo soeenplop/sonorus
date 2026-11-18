@@ -33,6 +33,14 @@ public struct MenuBarException: Identifiable, Equatable, Sendable {
   }
 }
 
+/// Why changes are not saved.
+public enum PersistenceIssue: Equatable, Sendable {
+  /// The stored settings could not be read and are kept untouched.
+  case unreadable
+  /// The stored settings come from a newer version and are kept untouched.
+  case newerVersion
+}
+
 /// Everything the popover shows, as plain values.
 public struct MenuBarState: Equatable, Sendable {
   public var configuration: FocusConfiguration
@@ -41,15 +49,17 @@ public struct MenuBarState: Equatable, Sendable {
   public var displays: [MenuBarDisplay]
   /// True when the renderer lacks the adjustable blur and only approximates it.
   public var usesFallbackBlur: Bool
+  public var persistenceIssue: PersistenceIssue?
 
   public init(
     configuration: FocusConfiguration = FocusConfiguration(),
     exceptions: [MenuBarException] = [], displays: [MenuBarDisplay] = [],
-    usesFallbackBlur: Bool = false
+    usesFallbackBlur: Bool = false, persistenceIssue: PersistenceIssue? = nil
   ) {
     self.configuration = configuration
     self.exceptions = exceptions
     self.displays = displays
     self.usesFallbackBlur = usesFallbackBlur
+    self.persistenceIssue = persistenceIssue
   }
 }

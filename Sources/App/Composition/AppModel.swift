@@ -28,6 +28,8 @@ final class AppModel: FocusControlling {
   @ObservationIgnored private var renderTask: Task<Void, Never>?
   @ObservationIgnored private var needsRender = false
   @ObservationIgnored private var tasks: [Task<Void, Never>] = []
+  @ObservationIgnored private var saveTask: Task<Void, Never>?
+  @ObservationIgnored private var persistenceIssue: PersistenceIssue?
 
   private(set) var menu: MenuBarViewModel!
 
@@ -41,7 +43,7 @@ final class AppModel: FocusControlling {
   // MARK: Lifecycle
 
   private func start() async {
-    if let loaded = try? await store?.load() { session.configuration = loaded }
+    await load()
     displays.start()
     pushState()
     updateActivity()
@@ -60,6 +62,20 @@ final class AppModel: FocusControlling {
         guard let changes = self?.displays.changes() else { return }
         for await _ in changes { self?.pushState() }
       })
+  }
+
+  /// A failed or newer-version load blocks saving; the store refuses as well.
+  private func load() async {
+    guard let store else {
+      persistenceIssue = .unreadable
+      return
+    }
+    do {
+      session.configuration = try await store.load()
+      if await store.lastNewerSchemaVersion != nil { persistenceIssue = .newerVersion }
+    } catch {
+      persistenceIssue = .unreadable
+    }
   }
 
   private func receive(_ snapshot: DesktopSnapshot) {
@@ -134,7 +150,7 @@ final class AppModel: FocusControlling {
           MenuBarException(reference: $0, appName: $1)
         },
         displays: connected.map { MenuBarDisplay(id: $0.id, name: $0.name) },
-        usesFallbackBlur: renderer.isUsingFallbackBlur))
+        usesFallbackBlur: renderer.isUsingFallbackBlur, persistenceIssue: persistenceIssue))
   }
 
   /// Applies a configuration change everywhere and saves it.
@@ -151,9 +167,14 @@ final class AppModel: FocusControlling {
     desktop.isIdle = !session.configuration.isEnabled && !isSelecting
   }
 
+  /// Saves run one after another, so the newest configuration is written last.
   private func save() {
+    guard persistenceIssue == nil, let store else { return }
     let configuration = session.configuration
-    Task { [store] in try? await store?.save(configuration) }
+    saveTask = Task { [previous = saveTask] in
+      await previous?.value
+      try? await store.save(configuration)
+    }
   }
 
   // MARK: FocusControlling
@@ -225,9 +246,8 @@ final class AppModel: FocusControlling {
     selection.cancel()
     renderer.stop()
     desktop.stop()
-    let configuration = session.configuration
-    Task { [store] in
-      try? await store?.save(configuration)
+    Task { [saveTask] in
+      await saveTask?.value
       NSApplication.shared.terminate(nil)
     }
   }

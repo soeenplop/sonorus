@@ -8,6 +8,9 @@ public enum ConfigurationStoreError: Error, Equatable, Sendable {
   /// The file was written by a newer Sonorus. It is left untouched and saving
   /// is refused while it exists, so a downgrade cannot destroy newer settings.
   case newerSchemaVersion(file: URL, version: Int)
+  /// The last load failed. Saving is refused until a load succeeds, so the
+  /// unread file is never replaced.
+  case loadFailed(file: URL)
 }
 
 /// Stores `FocusConfiguration` as versioned JSON in one directory, by default
@@ -35,6 +38,7 @@ public actor FileConfigurationStore: ConfigurationStoring {
   public private(set) var lastNewerSchemaVersion: Int?
 
   private let now: @Sendable () -> Date
+  private var lastLoadFailed = false
 
   public init(directory: URL, now: @escaping @Sendable () -> Date = { Date() }) {
     self.directory = directory
@@ -54,6 +58,16 @@ public actor FileConfigurationStore: ConfigurationStoring {
   public func load() async throws -> FocusConfiguration {
     lastRecoveredBackup = nil
     lastNewerSchemaVersion = nil
+    lastLoadFailed = false
+    do {
+      return try loadOrRecover()
+    } catch {
+      lastLoadFailed = true
+      throw error
+    }
+  }
+
+  private func loadOrRecover() throws -> FocusConfiguration {
     let data: Data
     do {
       data = try Data(contentsOf: fileURL)
@@ -70,6 +84,7 @@ public actor FileConfigurationStore: ConfigurationStoring {
   }
 
   public func save(_ configuration: FocusConfiguration) async throws {
+    if lastLoadFailed { throw ConfigurationStoreError.loadFailed(file: fileURL) }
     if let data = try? Data(contentsOf: fileURL), let version = Self.newerSchemaVersion(in: data) {
       throw ConfigurationStoreError.newerSchemaVersion(file: fileURL, version: version)
     }

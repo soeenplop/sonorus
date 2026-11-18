@@ -174,7 +174,13 @@ public struct MenuBarContent: View {
   }
 
   private var footer: some View {
-    HStack {
+    HStack(alignment: .firstTextBaseline) {
+      if let note = model.persistenceNote {
+        Label(note, systemImage: "exclamationmark.triangle")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
       Spacer()
       Button("Quit") { model.quit() }
         .buttonStyle(.borderless)
