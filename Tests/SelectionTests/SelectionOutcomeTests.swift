@@ -22,9 +22,10 @@ final class SelectionOutcomeTests: XCTestCase {
     S.drag(&engine, from: S.point(600, 600), to: S.point(900, 800))
     engine.confirm()
 
-    guard case .confirmed(let draft)? = engine.outcome else {
+    guard case .confirmed(let draft, let mode)? = engine.outcome else {
       return XCTFail("expected confirmed outcome, got \(String(describing: engine.outcome))")
     }
+    XCTAssertEqual(mode, .regions)
     XCTAssertEqual(draft.windows, [S.background, S.focused])
     XCTAssertEqual(draft.displays, [S.secondary])
     XCTAssertEqual(draft.regions.count, 2)
@@ -47,7 +48,7 @@ final class SelectionOutcomeTests: XCTestCase {
   func testConfirmWithoutChangesReturnsInitialDraft() {
     var engine = S.engine(mode: .regions, draft: initialDraft())
     engine.confirm()
-    XCTAssertEqual(engine.outcome, .confirmed(initialDraft()))
+    XCTAssertEqual(engine.outcome, .confirmed(initialDraft(), mode: .regions))
   }
 
   func testConfirmDropsRectangleStillBeingDragged() {
@@ -55,7 +56,7 @@ final class SelectionOutcomeTests: XCTestCase {
     engine.pointerDown(at: S.point(100, 100))
     engine.pointerDragged(to: S.point(400, 400))
     engine.confirm()
-    XCTAssertEqual(engine.outcome, .confirmed(SelectionDraft()))
+    XCTAssertEqual(engine.outcome, .confirmed(SelectionDraft(), mode: .regions))
     engine.pointerUp(at: S.point(400, 400))
     XCTAssertTrue(engine.draft.regions.isEmpty)
   }
@@ -76,7 +77,7 @@ final class SelectionOutcomeTests: XCTestCase {
     confirmed.confirm()
     confirmed.click(at: S.point(150, 150))
     confirmed.cancel()
-    XCTAssertEqual(confirmed.outcome, .confirmed(SelectionDraft()))
+    XCTAssertEqual(confirmed.outcome, .confirmed(SelectionDraft(), mode: .windows))
     XCTAssertTrue(confirmed.draft.windows.isEmpty)
 
     var cancelled = S.engine(mode: .windows)

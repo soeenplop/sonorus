@@ -4,7 +4,7 @@ import Contracts
 /// Screenshot-style direct selection on the desktop: one overlay panel per
 /// display with window/display hover, region drawing and a compact toolbar.
 ///
-/// Work happens on a copy of the draft; the caller only sees `.confirmed(draft)`
+/// Work happens on a copy of the draft; the caller only sees `.confirmed(draft, mode:)`
 /// after Enter or the confirm button. Esc, the cancel button, a display change
 /// and `cancel()` all end with `.cancelled`.
 @MainActor

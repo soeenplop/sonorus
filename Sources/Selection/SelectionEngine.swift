@@ -389,7 +389,7 @@ struct SelectionEngine: Sendable {
   mutating func confirm() {
     guard outcome == nil else { return }
     gesture = nil
-    outcome = .confirmed(draft)
+    outcome = .confirmed(draft, mode: mode)
   }
 
   /// Discards every change of this pass and restores the previous draft.

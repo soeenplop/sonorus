@@ -70,7 +70,7 @@ final class AmbiguousDisplayTests: XCTestCase {
     engine.click(at: S.point(1500, 100))
     engine.click(at: S.point(700, 400))
     engine.confirm()
-    guard case .confirmed(let draft)? = engine.outcome else { return XCTFail("not confirmed") }
+    guard case .confirmed(let draft, _)? = engine.outcome else { return XCTFail("not confirmed") }
     XCTAssertEqual(draft.displays, [Self.twinID])
   }
 
@@ -106,7 +106,7 @@ final class AmbiguousDisplayTests: XCTestCase {
     engine.selectNextRegion()
     XCTAssertNil(engine.selectedRegionID)
     engine.confirm()
-    guard case .confirmed(let draft)? = engine.outcome else { return XCTFail("not confirmed") }
+    guard case .confirmed(let draft, _)? = engine.outcome else { return XCTFail("not confirmed") }
     XCTAssertEqual(draft.regions, [stored])
   }
 

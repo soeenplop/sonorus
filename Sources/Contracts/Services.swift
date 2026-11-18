@@ -34,7 +34,8 @@ public struct SelectionRequest: Equatable, Sendable {
 }
 
 public enum SelectionOutcome: Equatable, Sendable {
-  case confirmed(SelectionDraft)
+  /// `mode` is the mode the pass ended in; the draft keeps edits of every mode.
+  case confirmed(SelectionDraft, mode: SelectionMode)
   case cancelled
 }
 
@@ -82,4 +83,37 @@ public protocol OverlayRendering: AnyObject {
 public protocol SelectionPresenting: AnyObject {
   func select(_ request: SelectionRequest) async -> SelectionOutcome
   func cancel()
+}
+
+extension FocusSession {
+  /// Applies a confirmed selection pass that started from `original` in
+  /// `startMode` and ended in `endMode`. Edits of every mode are kept: the
+  /// exceptions always, regions when they changed. The scope follows the last
+  /// display or region mode used, but never switches to an empty selection.
+  public mutating func apply(
+    _ draft: SelectionDraft, original: SelectionDraft,
+    startMode: SelectionMode, endMode: SelectionMode
+  ) {
+    exceptions = draft.windows
+    if draft.regions != original.regions { configuration.regions = draft.regions }
+
+    let scopeMode =
+      [endMode, startMode].first { $0 != .windows }
+      ?? (draft.displays != original.displays
+        ? .displays : draft.regions != original.regions ? .regions : nil)
+    switch scopeMode {
+    case .displays:
+      if case .displays = configuration.scope {
+        configuration.scope = .displays(draft.displays)
+      } else if !draft.displays.isEmpty {
+        configuration.scope = .displays(draft.displays)
+      }
+    case .regions:
+      if configuration.scope == .regions || !draft.regions.isEmpty {
+        configuration.scope = .regions
+      }
+    case .windows, nil:
+      break
+    }
+  }
 }

@@ -364,7 +364,7 @@ final class RegionSelectionTests: XCTestCase {
     XCTAssertNil(engine.selectedRegionID)
     XCTAssertEqual(engine.draft.regions, [gone])
     engine.confirm()
-    XCTAssertEqual(engine.outcome, .confirmed(SelectionDraft(regions: [gone])))
+    XCTAssertEqual(engine.outcome, .confirmed(SelectionDraft(regions: [gone]), mode: .regions))
   }
 
   // MARK: Handles and cursor

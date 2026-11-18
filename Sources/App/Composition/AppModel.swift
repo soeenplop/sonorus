@@ -181,26 +181,15 @@ final class AppModel: FocusControlling {
         regions: session.configuration.regions))
     Task {
       let outcome = await selection.select(request)
-      if case .confirmed(let draft) = outcome { apply(draft, mode: mode) }
+      if case .confirmed(let draft, let endMode) = outcome {
+        let before = session.configuration
+        session.apply(draft, original: request.draft, startMode: mode, endMode: endMode)
+        if session.configuration != before { save() }
+      }
       isSelecting = false
       await desktop.endFocusFreeze()
       pushState()
       scheduleRender()
-    }
-  }
-
-  private func apply(_ draft: SelectionDraft, mode: SelectionMode) {
-    switch mode {
-    case .windows:
-      session.exceptions = draft.windows
-      pushState()
-    case .displays:
-      update { $0.scope = .displays(draft.displays) }
-    case .regions:
-      update {
-        $0.regions = draft.regions
-        $0.scope = .regions
-      }
     }
   }
 
