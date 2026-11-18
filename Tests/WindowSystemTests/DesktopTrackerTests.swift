@@ -155,15 +155,15 @@ final class DesktopTrackerTests: XCTestCase {
     windows.hidden = [minimized]
     timers.fire(poll)
     let calls = windows.describeCalls
-    XCTAssertNotNil(tracker.catalog.references[20])
+    XCTAssertTrue(tracker.knownWindows.contains { $0.windowID == 20 })
 
     windows.hidden = []  // closed while minimized
     for _ in 0..<18 { timers.fire(poll) }
     XCTAssertEqual(windows.describeCalls, calls)
-    XCTAssertNotNil(tracker.catalog.references[20])
+    XCTAssertTrue(tracker.knownWindows.contains { $0.windowID == 20 })
     timers.fire(poll)
     XCTAssertEqual(windows.describeCalls, calls + 1)
-    XCTAssertNil(tracker.catalog.references[20])
+    XCTAssertFalse(tracker.knownWindows.contains { $0.windowID == 20 })
   }
 
   func testWorkspaceEventsRecheckHiddenWindows() async throws {
@@ -174,7 +174,7 @@ final class DesktopTrackerTests: XCTestCase {
     windows.hidden = []
     events.send(.windowsChanged)
     XCTAssertEqual(windows.describeCalls, calls + 1)
-    XCTAssertNil(tracker.catalog.references[20])
+    XCTAssertFalse(tracker.knownWindows.contains { $0.windowID == 20 })
   }
 
   func testFreezeKeepsTargetWhileOwnUIIsActive() async throws {

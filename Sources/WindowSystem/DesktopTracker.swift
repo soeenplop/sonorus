@@ -40,6 +40,10 @@ public final class DesktopTracker: DesktopProviding {
 
   public private(set) var currentSnapshot: DesktopSnapshot?
 
+  /// Every window that still exists, on screen or hidden, as of the last
+  /// check; hidden windows may lag by up to `Timing.hiddenCheckInterval`.
+  public var knownWindows: Set<WindowReference> { Set(catalog.references.values) }
+
   /// Nothing depends on fresh snapshots: poll slowly and skip bursts.
   /// Leaving idle refreshes immediately.
   public var isIdle = false {
@@ -57,7 +61,7 @@ public final class DesktopTracker: DesktopProviding {
   private let timers: any TimerScheduling
   private let separateSpaces: @MainActor () -> Bool
   private let timing: Timing
-  private(set) var catalog: WindowCatalog
+  private var catalog: WindowCatalog
   private var focus: FocusTracker
   private var bundleIDs: [Int32: String?] = [:]
   private var continuations: [UUID: AsyncStream<DesktopSnapshot>.Continuation] = [:]

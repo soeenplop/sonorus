@@ -64,11 +64,9 @@ final class AppModel: FocusControlling {
 
   private func receive(_ snapshot: DesktopSnapshot) {
     self.snapshot = snapshot
-    // Exceptions last until their window closes; a quit owner ends them all.
+    // Exceptions last until their window closes; minimized or hidden windows keep theirs.
     let before = session.exceptions
-    session.exceptions = session.exceptions.filter {
-      NSRunningApplication(processIdentifier: $0.ownerPID) != nil
-    }
+    session.exceptions.formIntersection(desktop.knownWindows)
     if session.exceptions != before { pushState() }
     scheduleRender()
   }
